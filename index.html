@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Auracle — turn your hearing test results into parametric EQ settings. Generate a personalised headphone EQ correction curve from your audiogram.">
+<meta property="og:title" content="Auracle">
+<meta property="og:description" content="Turn your hearing test into personalised headphone EQ settings.">
+<title>Auracle — Hearing to EQ</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --border: #222226;
+    --accent: #c8f060;
+    --accent2: #60c8f0;
+    --text: #e8e8ea;
+    --muted: #555560;
+    --danger: #f06060;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 48px 24px;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200,240,96,0.06) 0%, transparent 70%);
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 52px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 480px;
+  }
+
+  .instructions {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    padding: 20px 24px;
+    margin-bottom: 40px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #999;
+  }
+
+  .instructions strong { color: var(--accent2); font-weight: 500; }
+
+  /* Scale control */
+  .scale-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .scale-row label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .scale-row input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .scale-value {
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .freq-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .freq-toolbar-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 4px;
+  }
+
+  .freq-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .preset-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+
+  .preset-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .preset-btn.used {
+    color: var(--border);
+    border-color: var(--border);
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .freq-custom-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    background: var(--bg);
+  }
+
+  .freq-custom-wrap input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    width: 70px;
+    outline: none;
+  }
+
+  .freq-custom-wrap input::placeholder { color: var(--muted); }
+
+  .hz-suffix {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .freq-custom-wrap button {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-left: 1px solid var(--border);
+    margin-left: 4px;
+    transition: background 0.15s;
+  }
+
+  .freq-custom-wrap button:hover { background: rgba(200,240,96,0.08); }
+
+  .freq-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 12px 12px;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+
+  .remove-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: var(--border);
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    transition: color 0.15s;
+  }
+
+  .remove-btn:hover { color: var(--danger); }
+
+
+  .freq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 2px;
+    margin-bottom: 40px;
+  }
+
+  .freq-cell:hover { border-color: #444; }
+  .freq-cell.active { border-color: var(--accent); }
+
+  .freq-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding-right: 16px;
+  }
+
+  .freq-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .freq-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 300;
+    padding: 4px 0;
+    outline: none;
+    transition: border-color 0.15s;
+    text-align: center;
+  }
+
+  .freq-input:focus { border-color: var(--accent); }
+
+  .db-unit {
+    font-size: 10px;
+    color: var(--muted);
+    margin-left: 4px;
+    position: absolute;
+    right: 0;
+    bottom: 6px;
+  }
+
+  .bar-vis {
+    margin-top: 10px;
+    height: 3px;
+    background: var(--border);
+    position: relative;
+    overflow: visible;
+  }
+
+  .bar-fill {
+    height: 100%;
+    position: absolute;
+    top: 0;
+    transition: width 0.2s, background 0.2s, left 0.2s;
+  }
+
+  .viz-section {
+    margin-bottom: 40px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  canvas {
+    width: 100%;
+    height: 160px;
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .output-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .ctrl-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-right: 8px;
+  }
+
+  .mode-toggle-wrap, .graphic-bands-wrap, .norm-wrap {
+    display: flex;
+    align-items: center;
+  }
+
+  .mode-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn.active { background: var(--accent); color: var(--bg); }
+  .mode-btn:not(.active):hover { color: var(--accent); }
+
+  .band-btns {
+    display: flex;
+    border: 1px solid var(--border);
+  }
+
+  .band-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .band-btn:last-child { border-right: none; }
+  .band-btn.active { background: var(--accent2); color: var(--bg); }
+  .band-btn:not(.active):hover { color: var(--accent2); }
+
+  /* Toggle switch */
+  .toggle-switch { display: flex; align-items: center; cursor: pointer; }
+  .toggle-track {
+    width: 32px; height: 18px;
+    background: var(--border);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.2s;
+  }
+  input:checked + .toggle-track { background: var(--accent); }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 12px; height: 12px;
+    background: var(--bg);
+    border-radius: 50%;
+    transition: left 0.2s;
+  }
+  input:checked + .toggle-track .toggle-thumb { left: 17px; }
+  .toggle-switch input { display: none; }
+
+  .norm-hint {
+    font-size: 10px;
+    color: var(--accent);
+    margin-left: 10px;
+    min-width: 80px;
+  }
+
+  /* Graphic EQ bar display */
+  .graphic-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 80px;
+    padding: 8px 0 4px;
+  }
+
+  .g-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .g-bar-val {
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+
+  .g-bar {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 1px;
+    transition: height 0.3s, background 0.3s;
+  }
+
+  .g-bar-label {
+    font-size: 8px;
+    color: var(--muted);
+    margin-top: 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 40px;
+  }
+
+  .output-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+
+  .output-card h3 {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 20px;
+  }
+
+  .filter-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filter-item {
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: border-color 0.15s;
+  }
+
+  .filter-item:hover { border-color: #333; }
+
+  .filter-item .freq-tag {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .filter-item .gain-tag {
+    color: var(--text);
+  }
+
+  .filter-item .gain-tag.positive { color: var(--accent); }
+  .filter-item .gain-tag.negative { color: var(--danger); }
+
+  .filter-item .meta {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  /* Copy block */
+  .copy-section {
+    margin-bottom: 40px;
+  }
+
+  .copy-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0;
+    position: relative;
+  }
+
+  .copy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .copy-header span {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .copy-btn:hover {
+    background: rgba(200,240,96,0.08);
+    border-color: var(--accent);
+  }
+
+  .copy-btn.copied {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  pre {
+    padding: 20px 16px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #aaa;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+
+  pre .key { color: var(--accent2); }
+  pre .val { color: var(--text); }
+  pre .comment { color: var(--muted); }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .reset-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .empty-state {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 20px 0;
+    font-style: italic;
+  }
+
+  @media (max-width: 520px) {
+    .output-grid { grid-template-columns: 1fr; }
+    .freq-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="eyebrow">Auracle · Audiogram → EQ</div>
+    <h1>Your hearing,<br><em>corrected.</em></h1>
+    <p class="subtitle">Enter your audiogram values — the dB loss at each frequency from your hearing test. Auracle generates an inverse EQ curve to compensate.</p>
+  </header>
+
+  <div class="instructions">
+    <strong>How to use:</strong> Take a free hearing test at <strong>hearingtest.online</strong> or <strong>mimi.io</strong> wearing your headphones at your normal listening volume. Enter the dB threshold values below — positive numbers mean you need more volume at that frequency. We invert and scale them into parametric EQ filter settings.<br><br>
+    <strong>Tip:</strong> Use the scale slider to reduce the correction intensity if the result sounds over-processed.
+  </div>
+
+  <div class="scale-row">
+    <label>Correction Scale</label>
+    <input type="range" id="scaleSlider" min="10" max="100" value="10" step="5">
+    <span class="scale-value" id="scaleDisplay">10%</span>
+  </div>
+
+  <div class="section-label">Hearing Thresholds</div>
+
+  <div class="freq-toolbar">
+    <span class="freq-toolbar-label">Add frequency</span>
+    <div class="freq-presets" id="freqPresets"></div>
+    <div class="freq-custom-wrap">
+      <input type="number" id="customFreqInput" placeholder="e.g. 375" min="20" max="20000" step="1">
+      <span class="hz-suffix">Hz</span>
+      <button id="addCustomBtn">Add</button>
+    </div>
+  </div>
+
+  <div class="freq-grid" id="freqGrid"></div>
+
+  <div class="viz-section">
+    <div class="section-label">EQ Curve Preview</div>
+    <canvas id="eqCanvas"></canvas>
+  </div>
+
+  <div class="section-label">Output Settings</div>
+
+  <div class="output-controls">
+    <div class="mode-toggle-wrap">
+      <span class="ctrl-label">Mode</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeParametric">Parametric</button>
+        <button class="mode-btn" id="modeGraphic">Graphic EQ</button>
+      </div>
+    </div>
+    <div class="graphic-bands-wrap" id="graphicBandsWrap" style="display:none">
+      <span class="ctrl-label">Bands</span>
+      <div class="band-btns">
+        <button class="band-btn" data-bands="5">5</button>
+        <button class="band-btn active" data-bands="10">10</button>
+        <button class="band-btn" data-bands="15">15</button>
+        <button class="band-btn" data-bands="31">31</button>
+      </div>
+    </div>
+    <div class="norm-wrap">
+      <span class="ctrl-label">Normalize</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="normalizeToggle" checked>
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </label>
+      <span class="norm-hint" id="normHint"></span>
+    </div>
+  </div>
+
+  <div class="output-single" id="outputSingle">
+    <div class="output-card" style="border:1px solid var(--border)">
+      <h3 id="cardTitleSS">Parametric EQ Filters</h3>
+      <ul class="filter-list" id="filterListSS"></ul>
+    </div>
+  </div>
+  <div class="output-grid" id="outputGrid" style="display:none">
+    <div class="output-card">
+      <h3 id="cardTitleSSG">Graphic EQ — Band Gains</h3>
+      <ul class="filter-list" id="filterListSSG"></ul>
+    </div>
+    <div class="output-card">
+      <h3 id="cardTitleWavelet">Graphic EQ — Bar View</h3>
+      <ul class="filter-list" id="filterListWavelet"></ul>
+    </div>
+  </div>
+
+  <div class="copy-section">
+    <div class="section-label">Export</div>
+    <div class="copy-block">
+      <div class="copy-header">
+        <span id="exportLabel">Parametric EQ — All Filters</span>
+        <button class="copy-btn" id="copyBtn">Copy</button>
+      </div>
+      <pre id="exportPre"></pre>
+    </div>
+  </div>
+
+  <button class="reset-btn" id="resetBtn">Reset all values</button>
+</div>
+
+<script>
+const PRESET_FREQS = [
+  { hz: 20,    label: '20 Hz'  }, { hz: 32,    label: '32 Hz'  },
+  { hz: 40,    label: '40 Hz'  }, { hz: 50,    label: '50 Hz'  },
+  { hz: 63,    label: '63 Hz'  }, { hz: 80,    label: '80 Hz'  },
+  { hz: 100,   label: '100 Hz' }, { hz: 125,   label: '125 Hz' },
+  { hz: 160,   label: '160 Hz' }, { hz: 200,   label: '200 Hz' },
+  { hz: 250,   label: '250 Hz' }, { hz: 315,   label: '315 Hz' },
+  { hz: 375,   label: '375 Hz' }, { hz: 400,   label: '400 Hz' },
+  { hz: 500,   label: '500 Hz' }, { hz: 630,   label: '630 Hz' },
+  { hz: 750,   label: '750 Hz' }, { hz: 800,   label: '800 Hz' },
+  { hz: 1000,  label: '1 kHz'  }, { hz: 1250,  label: '1.25 kHz' },
+  { hz: 1500,  label: '1.5 kHz' }, { hz: 1600, label: '1.6 kHz' },
+  { hz: 2000,  label: '2 kHz'  }, { hz: 2500,  label: '2.5 kHz' },
+  { hz: 3000,  label: '3 kHz'  }, { hz: 3150,  label: '3.15 kHz' },
+  { hz: 4000,  label: '4 kHz'  }, { hz: 5000,  label: '5 kHz'  },
+  { hz: 6000,  label: '6 kHz'  }, { hz: 6300,  label: '6.3 kHz' },
+  { hz: 7000,  label: '7 kHz'  }, { hz: 8000,  label: '8 kHz'  },
+  { hz: 9000,  label: '9 kHz'  }, { hz: 10000, label: '10 kHz' },
+  { hz: 12000, label: '12 kHz' }, { hz: 12500, label: '12.5 kHz' },
+  { hz: 14000, label: '14 kHz' }, { hz: 16000, label: '16 kHz' },
+  { hz: 18000, label: '18 kHz' }, { hz: 20000, label: '20 kHz' },
+];
+
+// Standard graphic EQ band sets
+const GRAPHIC_BAND_SETS = {
+  5:  [100, 400, 1000, 4000, 12000],
+  10: [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
+  15: [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000],
+  31: [20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000],
+};
+
+const DEFAULT_HZ = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000, 12000, 16000];
+const DEFAULT_Q = 1.4;
+
+let scale = 0.1;
+let activeFreqs = {};
+let outputMode = 'parametric'; // 'parametric' | 'graphic'
+let graphicBands = 10;
+let normalizeEnabled = true;
+
+function formatLabel(hz) {
+  const p = PRESET_FREQS.find(f => f.hz === hz);
+  if (p) return p.label;
+  return hz >= 1000 ? (hz/1000).toFixed(hz % 1000 === 0 ? 0 : 2) + ' kHz' : hz + ' Hz';
+}
+
+function formatHz(hz) {
+  return hz >= 1000 ? (hz/1000 % 1 === 0 ? hz/1000 : (hz/1000).toFixed(1)) + 'k' : hz;
+}
+
+// ── Mode toggle ──────────────────────────────────────────────────────────────
+document.getElementById('modeParametric').addEventListener('click', () => {
+  outputMode = 'parametric';
+  document.getElementById('modeParametric').classList.add('active');
+  document.getElementById('modeGraphic').classList.remove('active');
+  document.getElementById('graphicBandsWrap').style.display = 'none';
+  document.getElementById('outputSingle').style.display = 'block';
+  document.getElementById('outputGrid').style.display = 'none';
+  document.getElementById('exportLabel').textContent = 'Parametric EQ — SoundSource Format';
+  render();
+});
+
+document.getElementById('modeGraphic').addEventListener('click', () => {
+  outputMode = 'graphic';
+  document.getElementById('modeGraphic').classList.add('active');
+  document.getElementById('modeParametric').classList.remove('active');
+  document.getElementById('graphicBandsWrap').style.display = 'flex';
+  document.getElementById('outputSingle').style.display = 'none';
+  document.getElementById('outputGrid').style.display = 'grid';
+  document.getElementById('exportLabel').textContent = `Graphic EQ — ${graphicBands} Band`;
+  render();
+});
+
+document.querySelectorAll('.band-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.band-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    graphicBands = parseInt(btn.dataset.bands);
+    document.getElementById('exportLabel').textContent = `Graphic EQ — ${graphicBands} Band`;
+    render();
+  });
+});
+
+// ── Normalize toggle ─────────────────────────────────────────────────────────
+document.getElementById('normalizeToggle').addEventListener('change', e => {
+  normalizeEnabled = e.target.checked;
+  render();
+});
+
+// ── Core math ────────────────────────────────────────────────────────────────
+function peakGain(f, fc, gain, Q) {
+  const r = f / fc;
+  return gain / (1 + Q * Q * (r - 1/r) * (r - 1/r));
+}
+
+function getCurveAt(f, filters) {
+  return filters.reduce((sum, filt) => sum + peakGain(f, filt.hz, filt.gain, filt.q), 0);
+}
+
+// Compute normalization offset: mean gain across audible range (log-spaced)
+function computeNormOffset(filters) {
+  if (!filters.length) return 0;
+  const steps = 200;
+  let sum = 0;
+  for (let i = 0; i < steps; i++) {
+    const f = Math.pow(10, Math.log10(20) + (Math.log10(20000) - Math.log10(20)) * i / (steps - 1));
+    sum += getCurveAt(f, filters);
+  }
+  return sum / steps;
+}
+
+function getRawFilters() {
+  return Object.keys(activeFreqs).map(Number).sort((a,b) => a-b).map(hz => {
+    const raw = parseFloat(activeFreqs[hz].value) || 0;
+    const gain = +(raw * scale).toFixed(1);
+    return { hz, label: activeFreqs[hz].label, rawDb: raw, gain, q: DEFAULT_Q };
+  }).filter(f => Math.abs(f.gain) >= 0.1);
+}
+
+function getParametricFilters() {
+  const raw = getRawFilters();
+  if (!normalizeEnabled || !raw.length) return raw;
+  const offset = computeNormOffset(raw);
+  return raw.map(f => ({ ...f, gain: +(f.gain - offset).toFixed(1) }))
+            .filter(f => Math.abs(f.gain) >= 0.1);
+}
+
+function getGraphicBandGains(numBands) {
+  const bands = GRAPHIC_BAND_SETS[numBands];
+  const rawFilters = getRawFilters();
+  if (!rawFilters.length) return bands.map(hz => ({ hz, gain: 0 }));
+
+  // Sample the combined parametric curve at each graphic band center
+  const gains = bands.map(hz => ({
+    hz,
+    label: formatHz(hz),
+    gain: +getCurveAt(hz, rawFilters).toFixed(1)
+  }));
+
+  if (normalizeEnabled) {
+    const offset = computeNormOffset(rawFilters);
+    return gains.map(b => ({ ...b, gain: +(b.gain - offset).toFixed(1) }));
+  }
+  return gains;
+}
+
+// ── Norm hint ─────────────────────────────────────────────────────────────────
+function updateNormHint(filters) {
+  const hint = document.getElementById('normHint');
+  if (!normalizeEnabled || !filters.length) { hint.textContent = ''; return; }
+  const rawFilters = getRawFilters();
+  const offset = computeNormOffset(rawFilters);
+  hint.textContent = offset >= 0
+    ? `−${Math.abs(offset).toFixed(1)} dB precomp`
+    : `+${Math.abs(offset).toFixed(1)} dB precomp`;
+}
+
+// ── Presets & grid ───────────────────────────────────────────────────────────
+const presetsEl = document.getElementById('freqPresets');
+function buildPresets() {
+  presetsEl.innerHTML = '';
+  PRESET_FREQS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (activeFreqs[f.hz] !== undefined ? ' used' : '');
+    btn.textContent = f.label;
+    btn.dataset.hz = f.hz;
+    btn.addEventListener('click', () => { if (activeFreqs[f.hz] !== undefined) return; addFreq(f.hz); });
+    presetsEl.appendChild(btn);
+  });
+}
+
+function updatePresetButtons() {
+  presetsEl.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('used', activeFreqs[parseInt(btn.dataset.hz)] !== undefined);
+  });
+}
+
+document.getElementById('addCustomBtn').addEventListener('click', () => {
+  const inp = document.getElementById('customFreqInput');
+  const hz = Math.round(parseFloat(inp.value));
+  if (!hz || hz < 20 || hz > 20000) return;
+  addFreq(hz); inp.value = '';
+});
+document.getElementById('customFreqInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('addCustomBtn').click();
+});
+
+const grid = document.getElementById('freqGrid');
+
+function addFreq(hz) {
+  if (activeFreqs[hz] !== undefined) return;
+  activeFreqs[hz] = { label: formatLabel(hz), value: '' };
+  rebuildGrid(); updatePresetButtons(); render();
+  const inp = document.getElementById(`inp_${hz}`);
+  if (inp) inp.focus();
+}
+
+function removeFreq(hz) {
+  delete activeFreqs[hz];
+  rebuildGrid(); updatePresetButtons(); render();
+}
+
+function rebuildGrid() {
+  grid.innerHTML = '';
+  Object.keys(activeFreqs).map(Number).sort((a,b) => a-b).forEach(hz => {
+    const f = activeFreqs[hz];
+    const cell = document.createElement('div');
+    cell.className = 'freq-cell' + (f.value && f.value !== '0' ? ' active' : '');
+    cell.id = `cell_${hz}`;
+    cell.innerHTML = `
+      <button class="remove-btn" data-hz="${hz}" title="Remove">×</button>
+      <div class="freq-label">${f.label}</div>
+      <div class="freq-input-wrap">
+        <input class="freq-input" type="number" id="inp_${hz}" min="-10" max="80" step="0.5" placeholder="0" value="${f.value}">
+        <span class="db-unit">dB</span>
+      </div>
+      <div class="bar-vis"><div class="bar-fill" id="bar_${hz}"></div></div>`;
+    grid.appendChild(cell);
+    const inp = cell.querySelector('input');
+    inp.addEventListener('input', () => {
+      activeFreqs[hz].value = inp.value;
+      cell.classList.toggle('active', inp.value !== '' && inp.value !== '0');
+      updateBar(hz); render();
+    });
+    inp.addEventListener('focus', () => cell.classList.add('active'));
+    inp.addEventListener('blur', () => { if (!inp.value || inp.value === '0') cell.classList.remove('active'); });
+    cell.querySelector('.remove-btn').addEventListener('click', () => removeFreq(hz));
+    updateBar(hz);
+  });
+}
+
+function updateBar(hz) {
+  const bar = document.getElementById(`bar_${hz}`);
+  if (!bar) return;
+  const val = parseFloat(activeFreqs[hz]?.value) || 0;
+  const pct = Math.min(Math.abs(val) / 60 * 100, 100);
+  if (val > 0) { bar.style.left = '50%'; bar.style.width = pct/2+'%'; bar.style.background = 'var(--accent)'; }
+  else if (val < 0) { bar.style.left=(50-pct/2)+'%'; bar.style.width=pct/2+'%'; bar.style.background='var(--danger)'; }
+  else { bar.style.width = '0'; }
+}
+
+// ── Scale slider ──────────────────────────────────────────────────────────────
+document.getElementById('scaleSlider').addEventListener('input', function() {
+  scale = parseInt(this.value) / 100;
+  document.getElementById('scaleDisplay').textContent = this.value + '%';
+  render();
+});
+
+// ── Canvas ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('eqCanvas');
+const ctx = canvas.getContext('2d');
+
+function drawCurve(filters, graphicGains) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+  const midY = H / 2;
+
+  const gridFreqs = [100, 250, 500, 1000, 2000, 4000, 8000, 16000];
+  gridFreqs.forEach(f => {
+    const x = freqToX(f, W);
+    ctx.strokeStyle = '#1a1a1e'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.fillStyle = '#333'; ctx.font = '9px DM Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText(f >= 1000 ? (f/1000)+'k' : f, x, H - 6);
+  });
+  ctx.strokeStyle = '#2a2a2e';
+  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+  const rawFilters = getRawFilters();
+  if (!rawFilters.length) {
+    ctx.fillStyle = '#2a2a2e'; ctx.font = '11px DM Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Enter values above to preview your EQ curve', W/2, H/2);
+    return;
+  }
+
+  const normOffset = normalizeEnabled ? computeNormOffset(rawFilters) : 0;
+
+  // Draw parametric curve (always shown as reference)
+  const points = [];
+  for (let i = 0; i < 500; i++) {
+    const f = Math.pow(10, Math.log10(20) + (Math.log10(20000) - Math.log10(20)) * i / 499);
+    const g = getCurveAt(f, rawFilters) - normOffset;
+    points.push({ x: freqToX(f, W), y: midY - (g / 20) * (H * 0.38) });
+  }
+
+  ctx.beginPath(); ctx.moveTo(points[0].x, midY);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length-1].x, midY); ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(200,240,96,0.12)');
+  grad.addColorStop(1, 'rgba(200,240,96,0)');
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = 'rgba(200,240,96,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Draw graphic EQ bars overlay if in graphic mode
+  if (outputMode === 'graphic' && graphicGains) {
+    const maxG = Math.max(...graphicGains.map(b => Math.abs(b.gain)), 1);
+    graphicGains.forEach(band => {
+      const x = freqToX(band.hz, W);
+      const barH = Math.abs(band.gain) / maxG * (H * 0.35);
+      const y = band.gain >= 0 ? midY - barH : midY;
+      ctx.fillStyle = band.gain >= 0 ? 'rgba(96,200,240,0.35)' : 'rgba(240,96,96,0.35)';
+      ctx.fillRect(x - 4, y, 8, barH);
+      ctx.beginPath(); ctx.arc(x, midY - (band.gain / 20) * (H * 0.38), 3, 0, Math.PI * 2);
+      ctx.fillStyle = band.gain >= 0 ? '#60c8f0' : '#f06060'; ctx.fill();
+    });
+  } else {
+    // Parametric nodes
+    filters.forEach(filt => {
+      const x = freqToX(filt.hz, W);
+      const g = getCurveAt(filt.hz, rawFilters) - normOffset;
+      const y = midY - (g / 20) * (H * 0.38);
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = filt.gain >= 0 ? '#c8f060' : '#f06060'; ctx.fill();
+    });
+  }
+}
+
+function freqToX(f, W) {
+  return (Math.log10(f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20)) * W;
+}
+
+// ── Render outputs ───────────────────────────────────────────────────────────
+function renderParametric(filters) {
+  const el = document.getElementById('filterListSS');
+  if (!filters.length) { el.innerHTML = '<li class="empty-state">Enter values above…</li>'; return; }
+  el.innerHTML = filters.map(f => {
+    const cls = f.gain > 0 ? 'positive' : f.gain < 0 ? 'negative' : '';
+    const sign = f.gain > 0 ? '+' : '';
+    return `<li class="filter-item">
+      <span class="freq-tag">${f.label}</span> · <span class="gain-tag ${cls}">${sign}${f.gain} dB</span>
+      <div class="meta">Peak · Q ${f.q}</div>
+    </li>`;
+  }).join('');
+}
+
+function renderGraphic(bandGains) {
+  // Card 1: text list
+  const el1 = document.getElementById('filterListSSG');
+  if (!bandGains.some(b => b.gain !== 0)) {
+    el1.innerHTML = '<li class="empty-state">Enter values above…</li>';
+  } else {
+    el1.innerHTML = bandGains.map(b => {
+      const cls = b.gain > 0 ? 'positive' : b.gain < 0 ? 'negative' : '';
+      const sign = b.gain > 0 ? '+' : '';
+      return `<li class="filter-item">
+        <span class="freq-tag">${formatHz(b.hz)} Hz</span> · <span class="gain-tag ${cls}">${sign}${b.gain} dB</span>
+      </li>`;
+    }).join('');
+  }
+
+  // Card 2: visual bar chart
+  const el2 = document.getElementById('filterListWavelet');
+  const maxAbs = Math.max(...bandGains.map(b => Math.abs(b.gain)), 0.1);
+  el2.innerHTML = `<li style="list-style:none;padding:0">
+    <div class="graphic-bars">
+      ${bandGains.map(b => {
+        const pct = Math.abs(b.gain) / maxAbs * 60;
+        const col = b.gain > 0 ? '#60c8f0' : b.gain < 0 ? '#f06060' : '#333';
+        const sign = b.gain > 0 ? '+' : '';
+        return `<div class="g-bar-wrap">
+          <div class="g-bar-val" style="color:${col}">${sign}${b.gain}</div>
+          <div class="g-bar" style="height:${Math.max(pct,2)}px;background:${col}"></div>
+          <div class="g-bar-label">${formatHz(b.hz)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </li>`;
+}
+
+function renderExport(filters, bandGains) {
+  const pre = document.getElementById('exportPre');
+  if (outputMode === 'parametric') {
+    if (!filters.length) { pre.innerHTML = '<span class="comment">// No filters yet — enter hearing values above</span>'; return; }
+    const normNote = normalizeEnabled ? ` · Normalized` : '';
+    // Compute preamp as negative of max boost to prevent clipping
+    const maxGain = Math.max(...filters.map(f => f.gain), 0);
+    const preamp = +(0 - maxGain).toFixed(1);
+    const typeMap = { PK: 'PK', LS: 'LS', HS: 'HS' };
+    let lines = `<span class="comment">// Auracle — Hearing Compensation EQ${normNote}
+// Scale ${Math.round(scale*100)}% · ${filters.length} filters · SoundSource format
+// Save as .txt and load via Add Other Profile…\n\n</span>`;
+    lines += `<span class="key">Preamp: ${preamp} dB</span>\n\n`;
+    filters.forEach((f, i) => {
+      const sign = f.gain > 0 ? '+' : '';
+      lines += `<span class="val">Filter ${i+1}: ON PK Fc ${f.hz} Hz Gain ${sign}${f.gain} dB Q ${f.q}</span>\n`;
+    });
+    pre.innerHTML = lines;
+  } else {
+    if (!bandGains.some(b => b.gain !== 0)) { pre.innerHTML = '<span class="comment">// No values yet — enter hearing thresholds above</span>'; return; }
+    const normNote = normalizeEnabled ? ` · Normalized` : '';
+    let lines = `<span class="comment">// Graphic EQ — ${graphicBands} Band · Hearing Compensation${normNote}
+// Generated ${new Date().toLocaleDateString()} · Scale ${Math.round(scale*100)}%
+// Set each band to the gain shown\n\n</span>`;
+    bandGains.forEach(b => {
+      const sign = b.gain > 0 ? '+' : '';
+      lines += `<span class="key">${String(b.hz).padStart(6)} Hz</span>  <span class="val">${sign}${b.gain} dB</span>\n`;
+    });
+    pre.innerHTML = lines;
+  }
+}
+
+function getCopyText(filters, bandGains) {
+  if (outputMode === 'parametric') {
+    const maxGain = Math.max(...filters.map(f => f.gain), 0);
+    const preamp = +(0 - maxGain).toFixed(1);
+    const lines = [`Preamp: ${preamp} dB`, ''];
+    filters.forEach((f, i) => {
+      const sign = f.gain > 0 ? '+' : '';
+      lines.push(`Filter ${i+1}: ON PK Fc ${f.hz} Hz Gain ${sign}${f.gain} dB Q ${f.q}`);
+    });
+    return lines.join('\n');
+  } else {
+    return bandGains.map(b => {
+      const sign = b.gain > 0 ? '+' : '';
+      return `${b.hz} Hz  ${sign}${b.gain} dB`;
+    }).join('\n');
+  }
+}
+
+function render() {
+  const filters = getParametricFilters();
+  const bandGains = outputMode === 'graphic' ? getGraphicBandGains(graphicBands) : null;
+  updateNormHint(filters);
+  drawCurve(filters, bandGains);
+  if (outputMode === 'parametric') {
+    renderParametric(filters);
+  } else {
+    renderGraphic(bandGains);
+  }
+  renderExport(filters, bandGains);
+}
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const filters = getParametricFilters();
+  const bandGains = outputMode === 'graphic' ? getGraphicBandGains(graphicBands) : null;
+  const text = getCopyText(filters, bandGains);
+  if (!text) return;
+  navigator.clipboard.writeText(text);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'Copied!'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  activeFreqs = {};
+  DEFAULT_HZ.forEach(hz => { activeFreqs[hz] = { label: formatLabel(hz), value: '' }; });
+  rebuildGrid(); updatePresetButtons(); render();
+});
+
+// Init
+DEFAULT_HZ.forEach(hz => { activeFreqs[hz] = { label: formatLabel(hz), value: '' }; });
+buildPresets(); rebuildGrid(); render();
+window.addEventListener('resize', () => {
+  const filters = getParametricFilters();
+  const bandGains = outputMode === 'graphic' ? getGraphicBandGains(graphicBands) : null;
+  drawCurve(filters, bandGains);
+});
+</script>
+</body>
+</html>
